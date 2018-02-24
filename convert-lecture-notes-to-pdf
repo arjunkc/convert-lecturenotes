@@ -1,1 +1,50 @@
-/home/arjun/bin/misc_scripts/convert-lecture-notes-to-pdf
+#!/bin/bash
+
+# Takes png images created by the Android application LectureNotes,
+# flattens them and turns them into a pdf. It does not correctly
+# preserve the page background at the moment. 
+
+# It takes a LectureNotes formatted directory as input. 
+# It supports pdfs annotated in lecture notes. But pdfs are slow in
+# lectures notes and are best avoided.
+
+# It goes up to 99999 pages. 
+# It uses extended globbing. The code to get around extended globbing is
+# available but commented out, depending on your purpose.
+# Creates out-xxxxx.png
+
+shopt -s extglob
+
+debug="True"
+
+cd "$*"
+echo "in directory " $(pwd)
+#a1=$(ls -1 page?.png)
+#a2=$(ls -1 page??.png)
+#a3=$(ls -1 page???.png)
+outformat='png'
+convertoptions='-quality 100'
+
+# uses bash extended globbing to avoid subpages
+pages=page*([0-9]).png
+if [[ "True" == $debug ]]; then
+    echo $pages
+fi
+
+if [[ -n "$pages" ]]; then
+    for i in $pages; do
+        num=$(echo "$i" | sed -n 's/page\([0-9]*\).png/\1/p')
+        subpages=$(ls page${num}_*.png 2>/dev/null)
+        out=out-$(printf "%0*d" 5 $num).$outformat
+        echo "convert $i $subpages "$convertoptions" -flatten $out"
+        convert $i $subpages $convertoptions -flatten "$out"
+    done
+fi
+
+if [[ -n $(ls out*.png 2>/dev/null) ]]; then
+    # only convert if some out.png files were created.
+    img2pdf --pagesize Letter --border 1in:1in -o compiled.pdf $(ls out*.$outformat)
+fi
+
+# hope you dont have any out-*.png in that directory
+rm -f out-*.png
